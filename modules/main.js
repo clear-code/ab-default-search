@@ -16,23 +16,34 @@ const DEFAULT_SEARCH_QUERY = 'extensions.ab-default-search@clear-code.com.query'
 prefs.setDefaultPref(DEFAULT_SEARCH_QUERY, '@');
 
 var AbDefaultSearch = {
+  get defaultQuery() {
+    return prefs.getPref(DEFAULT_SEARCH_QUERY);
+  },
+
   observe: function(aSubject, aTopic, aData) {
     var window = aSubject.QueryInterface(Ci.nsIDOMWindow);
-    window.addEventListener('DOMContentLoaded', this, false);
+    window.addEventListener('load', this, false);
   },
 
   handleEvent: function(aEvent) {
     switch (aEvent.type) {
-      case 'DOMContentLoaded':
+      case 'load':
         let (window = aEvent.currentTarget) {
           window.removeEventListener(aEvent.type, this, false);
           this.initWindow(window);
         }
         return;
+
+      case 'unload':
+        let (window = aEvent.currentTarget) {
+          window.addEventListener('unload', this, false);
+          this.windows.splice(this.windows.indexOf(window), 1);
+        }
+        return;
     }
   },
 
-  initWindow: function(aWindow) {
+  initWindow: function(aWindow, aOpened) {
     var uri = aWindow.location.href;
     if (uri.indexOf(AB_WINDOW) == 0 ||
         uri.indexOf(AB_SIDEBAR) == 0) {
@@ -48,18 +59,24 @@ var AbDefaultSearch = {
     }
   },
 
+  getField: function(aWindow) {
+    return aWindow.document.getElementById('peopleSearchInput');
+  },
+
   setSearchQuery: function(aWindow) {
-    var field = aWindow.document.getElementById('peopleSearchInput');
-    field.value = prefs.getPref(DEFAULT_SEARCH_QUERY);
+    var field = this.getField(aWindow);
+    field.value = this.defaultQuery;
     aWindow.onEnterInSearchBar();
   },
 
   initField: function(aWindow) {
     this.setSearchQuery(aWindow);
+    this.windows.push(aWindow);
+
+    aWindow.addEventListener('unload', this, false);
 
     var field = aWindow.document.getElementById('peopleSearchInput');
     var dirTree = aWindow.document.getElementById('dirTree');
-    aWindow = null;
 
     if (field.__abDefaultSearchListener__ &&
         field.__abDefaultSearchListener__.destroy)
@@ -89,17 +106,26 @@ var AbDefaultSearch = {
       dirTree.addEventListener('select', listener, false);
 
     field.__abDefaultSearchListener__ = listener;
-  }
+  },
+
+  windows: []
 };
 
 Services.obs.addObserver(AbDefaultSearch, 'chrome-document-global-created', false);
 
 WindowManager.getWindows(null).forEach(function(aWindow) {
-  AbDefaultSearch.initWindow(aWindow);
+  AbDefaultSearch.initWindow(aWindow, true);
 });
 
 function shutdown() {
   Services.obs.removeObserver(AbDefaultSearch, 'chrome-document-global-created');
+  AbDefaultSearch.windows.forEach(function(aWindow) {
+    var field = AbDefaultSearch.getField(aWindow);
+    if (field.value == AbDefaultSearch.defaultQuery)
+      field.value = '';
+    aWindow.removeEventListener('unload', AbDefaultSearch, false);
+  });
+  AbDefaultSearch.windows = undefined;
 
   WindowManager = undefined;
   AbDefaultSearch = undefined;
