@@ -26,15 +26,14 @@ var AbDefaultSearch = {
   },
 
   handleEvent: function(aEvent) {
+    var window = aEvent.currentTarget;
     switch (aEvent.type) {
       case 'load':
-        var window = aEvent.currentTarget;
         window.removeEventListener(aEvent.type, this, false);
         this.initWindow(window);
         return;
 
       case 'unload':
-        var window = aEvent.currentTarget;
         window.addEventListener(aEvent.type, this, false);
         this.windows.splice(this.windows.indexOf(window), 1);
         return;
