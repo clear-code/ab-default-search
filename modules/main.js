@@ -28,17 +28,15 @@ var AbDefaultSearch = {
   handleEvent: function(aEvent) {
     switch (aEvent.type) {
       case 'load':
-        let (window = aEvent.currentTarget) {
-          window.removeEventListener(aEvent.type, this, false);
-          this.initWindow(window);
-        }
+        var window = aEvent.currentTarget;
+        window.removeEventListener(aEvent.type, this, false);
+        this.initWindow(window);
         return;
 
       case 'unload':
-        let (window = aEvent.currentTarget) {
-          window.addEventListener('unload', this, false);
-          this.windows.splice(this.windows.indexOf(window), 1);
-        }
+        var window = aEvent.currentTarget;
+        window.addEventListener(aEvent.type, this, false);
+        this.windows.splice(this.windows.indexOf(window), 1);
         return;
     }
   },
